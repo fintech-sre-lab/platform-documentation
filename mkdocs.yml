@@ -1,0 +1,35 @@
+site_name: Fintech SRE Lab — Platform Documentation
+site_description: Central knowledge base for the Fintech SRE Lab fraud detection platform
+repo_name: fintech-sre-lab/platform-documentation
+nav:
+  - Home: index.md
+  - Architecture:
+    - High-level design: architecture/high-level-design.md
+    - Data flow: architecture/data-flow.md
+    - Network topology: architecture/network-topology.md
+  - ADR:
+    - "001 Adopt Polyrepo": adr/001-adopt-polyrepo.md
+    - "002 Use Circuit Breaker (Fail Open)": adr/002-use-circuit-breaker-fail-open.md
+    - "003 Sync vs Async Paths": adr/003-sync-vs-async-paths.md
+    - "004 Redis for Velocity Checks": adr/004-redis-for-velocity-checks.md
+  - Runbooks:
+    - Alert — High Latency: runbooks/alert-high-latency-prm.md
+    - Disaster Recovery — Geo Service: runbooks/disaster-recovery-geo-service.md
+    - Database Restore Procedures: runbooks/database-restore-procedures.md
+  - Specs:
+    - ISO8583 Field Mapping: specs/iso8583-field-mapping.md
+    - API Contracts: specs/api-contracts.md
+  - Post-mortems:
+    - 2024-12-20 Latency Spike: post-mortems/2024-12-20-latency-spike.md
+
+theme:
+  name: material
+
+plugins:
+  - search
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - footnotes
