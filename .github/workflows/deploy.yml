@@ -56,12 +56,6 @@ jobs:
           # Clean working tree (but keep .git)
           git rm -rf . >/dev/null 2>&1 || true
           cd ..
-          
-      - name: Configure git user
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-        working-directory: deploy_tmp
         
       - name: Sync site into temp repo and push
         env:
@@ -70,6 +64,8 @@ jobs:
           set -e
           rsync -a --delete site/ deploy_tmp/
           cd deploy_tmp
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git status --porcelain || true
           git add -A
           if git diff --staged --quiet; then
