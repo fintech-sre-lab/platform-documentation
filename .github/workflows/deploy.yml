@@ -2,7 +2,7 @@ name: Build and deploy MkDocs site
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   deploy:
@@ -16,7 +16,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
       - name: Install dependencies
         run: |
@@ -26,33 +26,35 @@ jobs:
       - name: Build site
         run: mkdocs build -d site
 
-      - name: Setup SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Add SSH key to agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Ensure GitHub known host
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
       - name: Clone target repo
-        env:
-          GIT_SSH_COMMAND: ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes
         run: |
           git clone --depth 1 --branch main git@github.com:fintech-sre-lab/fintech-sre-lab.github.io.git deploy_repo
 
       - name: Sync and push
         env:
           GIT_COMMIT_MSG: "CI: Deploy site from ${{ github.repository }}@${{ github.sha }}"
-          GIT_SSH_COMMAND: ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes
         run: |
           rsync -a --delete site/ deploy_repo/
           cd deploy_repo
+          echo '--- remotes before push ---'
+          git remote -v
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [ -n "$(git status --porcelain)" ]; then
             git add -A
             git commit -m "$GIT_COMMIT_MSG"
+            echo '--- remotes used for push ---'
+            git remote -v
             git push origin main || { echo "Error: Failed to push changes to origin/main. Please check network connectivity, SSH permissions, and branch status."; exit 1; }
           else
             echo "No changes to deploy"
