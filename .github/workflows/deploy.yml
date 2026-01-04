@@ -36,36 +36,40 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-      - name: Clone target repo
+      - name: Prepare temporary deploy repo
+        env:
+          TARGET_REPO: git@github.com:fintech-sre-lab/fintech-sre-lab.github.io.git
         run: |
-          git clone --depth 1 --branch main git@github.com:fintech-sre-lab/fintech-sre-lab.github.io.git deploy_repo
+          set -e
+          rm -rf deploy_tmp || true
+          mkdir deploy_tmp
+          cd deploy_tmp
+          git init
+          git remote add origin "$TARGET_REPO"
+          # If remote branch exists, fetch it and checkout, otherwise create orphan main
+          if git ls-remote --exit-code --heads origin main; then
+            git fetch --depth=1 origin main
+            git checkout main || git checkout -b main
+          else
+            git checkout --orphan main
+          fi
+          # Clean working tree (but keep .git)
+          git rm -rf . >/dev/null 2>&1 || true
+          cd ..
 
-      - name: Inspect deploy_repo
-        run: |
-          echo 'PWD:' $(pwd)
-          ls -la
-          echo 'deploy_repo listing:'
-          ls -la deploy_repo || true
-          echo 'deploy_repo remotes:'
-          git -C deploy_repo remote -v || true
-
-      - name: Sync and push
+      - name: Sync site into temp repo and push
         env:
           GIT_COMMIT_MSG: "CI: Deploy site from ${{ github.repository }}@${{ github.sha }}"
         run: |
-          rsync -a --delete site/ deploy_repo/
-          echo '--- deploy_repo remotes (before ensure) ---'
-          git -C deploy_repo remote -v || true
-          # Ensure origin points to the intended target repo
-          git -C deploy_repo remote set-url origin git@github.com:fintech-sre-lab/fintech-sre-lab.github.io.git || git -C deploy_repo remote add origin git@github.com:fintech-sre-lab/fintech-sre-lab.github.io.git
-          git -C deploy_repo config user.name "github-actions[bot]"
-          git -C deploy_repo config user.email "github-actions[bot]@users.noreply.github.com"
-          echo '--- deploy_repo remotes (after ensure) ---'
-          git -C deploy_repo remote -v
-          if [ -n "$(git -C deploy_repo status --porcelain)" ]; then
-            git -C deploy_repo add -A
-            git -C deploy_repo commit -m "$GIT_COMMIT_MSG"
-            git -C deploy_repo push --force origin main || { echo "Error: Failed to push changes to origin/main. Please check network connectivity, SSH permissions, and branch status."; exit 1; }
-          else
+          set -e
+          rsync -a --delete site/ deploy_tmp/
+          cd deploy_tmp
+          git status --porcelain || true
+          git add -A
+          if git diff --staged --quiet; then
             echo "No changes to deploy"
+            exit 0
           fi
+          git commit -m "$GIT_COMMIT_MSG"
+          # Force push to ensure repo root matches site contents exactly
+          git push --force origin main || { echo "Error: Failed to push changes to origin/main. Check SSH permissions and branch protection rules."; exit 1; }
