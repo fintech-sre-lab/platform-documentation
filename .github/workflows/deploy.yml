@@ -41,9 +41,10 @@ jobs:
           TARGET_REPO: git@github.com:fintech-sre-lab/fintech-sre-lab.github.io.git
         run: |
           set -e
-          rm -rf deploy_tmp || true
-          mkdir deploy_tmp
-          cd deploy_tmp
+          DEPLOY_DIR="$RUNNER_TEMP/deploy_tmp"
+          rm -rf "$DEPLOY_DIR" || true
+          mkdir -p "$DEPLOY_DIR"
+          cd "$DEPLOY_DIR"
           git init
           git remote add origin "$TARGET_REPO"
           # If remote branch exists, fetch it and checkout, otherwise create orphan main
@@ -55,15 +56,15 @@ jobs:
           fi
           # Clean working tree (but keep .git)
           git rm -rf . >/dev/null 2>&1 || true
-          cd ..
-        
+
       - name: Sync site into temp repo and push
         env:
           GIT_COMMIT_MSG: "CI: Deploy site from ${{ github.repository }}@${{ github.sha }}"
         run: |
           set -e
-          rsync -a --delete site/ deploy_tmp/
-          cd deploy_tmp
+          DEPLOY_DIR="$RUNNER_TEMP/deploy_tmp"
+          rsync -a --delete site/ "$DEPLOY_DIR"/
+          cd "$DEPLOY_DIR"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git status --porcelain || true
