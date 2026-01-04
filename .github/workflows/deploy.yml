@@ -31,17 +31,18 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          eval "$(ssh-agent -s)"
-          printf '%s\n' "$SSH_PRIVATE_KEY" | ssh-add -
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
       - name: Clone target repo
+        env:
+          GIT_SSH_COMMAND: ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes
         run: |
           git clone --depth 1 --branch main git@github.com:fintech-sre-lab/fintech-sre-lab.github.io.git deploy_repo
 
       - name: Sync and push
         env:
           GIT_COMMIT_MSG: "CI: Deploy site from $GITHUB_REPOSITORY@$GITHUB_SHA"
+          GIT_SSH_COMMAND: ssh -i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes
         run: |
           rsync -a --delete site/ deploy_repo/
           cd deploy_repo
